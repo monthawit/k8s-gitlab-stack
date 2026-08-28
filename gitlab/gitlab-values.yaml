@@ -1,0 +1,288 @@
+global:
+
+  edition: ee
+
+  hosts:
+    domain: apps.milkymonz.com
+
+    gitlab:
+      name: gitlab.apps.milkymonz.com
+
+    registry:
+      name: registry.apps.milkymonz.com
+
+    kas:
+      name: kas.apps.milkymonz.com
+
+    ssh: gitlab.apps.milkymonz.com
+
+    https: true
+
+  time_zone: Asia/Bangkok
+
+
+  # ==========================================================
+  # EXTERNAL POSTGRESQL
+  # ==========================================================
+
+  psql:
+    host: gitlab-postgresql-rw.gitlab.svc.cluster.local
+    port: 5432
+
+    database: gitlabhq_production
+    username: gitlab
+
+    password:
+      secret: gitlab-postgresql-password
+      key: password
+
+
+  # ==========================================================
+  # EXTERNAL REDIS
+  # ==========================================================
+
+  redis:
+    host: gitlab-redis-master.gitlab.svc.cluster.local
+    port: 6379
+
+    database: 0
+
+    auth:
+      enabled: true
+      secret: gitlab-redis-password
+      key: password
+
+
+  # ==========================================================
+  # INGRESS
+  # ==========================================================
+
+  ingress:
+    enabled: true
+
+    configureCertmanager: false
+
+    class: traefik
+
+    annotations:
+      cert-manager.io/cluster-issuer: certmanager01
+
+    tls:
+      enabled: true
+
+
+  # ==========================================================
+  # OBJECT STORAGE
+  # ==========================================================
+
+  appConfig:
+
+    object_store:
+
+      enabled: true
+
+      proxy_download: true
+
+      connection:
+        secret: gitlab-rails-storage
+        key: connection
+
+
+    artifacts:
+      enabled: true
+      bucket: gitlab-artifacts
+
+
+    lfs:
+      enabled: true
+      bucket: gitlab-lfs
+
+
+    uploads:
+      enabled: true
+      bucket: gitlab-uploads
+
+
+    packages:
+      enabled: true
+      bucket: gitlab-packages
+
+
+    externalDiffs:
+      enabled: true
+      bucket: gitlab-mr-diffs
+
+
+    terraformState:
+      enabled: true
+      bucket: gitlab-terraform-state
+
+
+    ciSecureFiles:
+      enabled: true
+      bucket: gitlab-ci-secure-files
+
+
+    dependencyProxy:
+      enabled: true
+      bucket: gitlab-dependency-proxy
+
+
+    agentPlanContent:
+      enabled: true
+      bucket: gitlab-agent-plan-content
+
+
+    ciCatalogBundles:
+      enabled: true
+      bucket: gitlab-ci-catalog-bundles
+
+
+    backups:
+      bucket: gitlab-backups
+      tmpBucket: gitlab-backups-tmp
+      objectStorage:
+        backend: s3
+
+  # ==========================================================
+  # REGISTRY
+  # ==========================================================
+
+  registry:
+    bucket: gitlab-registry
+
+
+  # ==========================================================
+  # GITALY
+  # ==========================================================
+
+  gitaly:
+    enabled: true
+    persistence:
+      storageClass: ceph-block
+      size: 50Gi
+
+
+  # ==========================================================
+  # GATEWAY API (Envoy Gateway)
+  #
+  # The chart defaults to global.gatewayApi.enabled: true, which
+  # installs an entire Envoy Gateway stack (GatewayClass/Gateway/
+  # HTTPRoute, plus cluster-wide MutatingWebhookConfiguration and
+  # ValidatingAdmissionPolicy resources) alongside classic Ingress.
+  # This deployment uses global.ingress (traefik) instead, so the
+  # Gateway API path must be explicitly disabled here (this key
+  # MUST live under global: — a top-level gatewayApi: is silently
+  # ignored) or both stacks get installed side by side.
+  # ==========================================================
+
+  gatewayApi:
+    enabled: false
+    installEnvoy: false
+    configureCertmanager: false
+
+
+# ============================================================
+# CERT-MANAGER
+# ============================================================
+
+
+installCertmanager: false
+
+certmanager-issuer:
+
+  email: monthawit.milky@gmail.com
+
+
+# ============================================================
+# DISABLE BUNDLED NGINX
+# ============================================================
+
+nginx-ingress:
+
+  enabled: false
+
+
+# ============================================================
+# DISABLE GITLAB RUNNER
+# ============================================================
+
+gitlab-runner:
+
+  install: false
+
+
+# ============================================================
+# DISABLE PROMETHEUS BUNDLED BY GITLAB
+# ============================================================
+
+prometheus:
+
+  install: false
+
+
+# ============================================================
+# GITLAB
+# ============================================================
+
+gitlab:
+
+  toolbox:
+
+    replicas: 1
+
+    backups:
+
+      objectStorage:
+
+        backend: s3
+
+        config:
+
+          secret: gitlab-backup-storage
+
+          key: config
+
+
+  webservice:
+
+    minReplicas: 2
+
+    maxReplicas: 4
+
+    ingress:
+      tls:
+        # Dedicated secret/Certificate for this ingress. It previously
+        # shared global.ingress's default "gitlab-wildcard-tls" secret
+        # with the kas ingress; cert-manager's ingress-shim did not
+        # merge both hostnames into that one Certificate and only kept
+        # kas.apps.milkymonz.com, leaving gitlab.apps.milkymonz.com
+        # served over a cert that didn't cover it. A separate secret
+        # name gives this ingress its own cert-manager-issued Certificate.
+        secretName: gitlab-webservice-tls
+
+
+  sidekiq:
+
+    replicas: 2
+
+
+# ============================================================
+# REGISTRY
+# ============================================================
+
+registry:
+
+  enabled: false
+
+  storage:
+
+    secret: gitlab-registry-storage
+
+    key: config
+
+  hpa:
+
+    minReplicas: 2
+
+    maxReplicas: 4
