@@ -1,0 +1,42 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: gitlab-postgresql
+  namespace: gitlab
+
+spec:
+
+  instances: 1
+
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+
+  storage:
+    storageClass: ceph-block
+    size: 100Gi
+
+  walStorage:
+    storageClass: ceph-block
+    size: 20Gi
+
+  postgresql:
+    parameters:
+      # GitLab's schema load runs in a single transaction and takes far
+      # more locks than Postgres's default (64). Too low and db:schema:load
+      # aborts with "out of shared memory / increase max_locks_per_transaction".
+      max_locks_per_transaction: "256"
+
+  bootstrap:
+
+    initdb:
+
+      database: gitlabhq_production
+
+      owner: gitlab
+
+      postInitSQL:
+
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+        - CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+        - CREATE EXTENSION IF NOT EXISTS amcheck;
